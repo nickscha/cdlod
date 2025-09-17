@@ -48,17 +48,22 @@ typedef struct cdlod_quadtree_node
 #endif
 CDLOD_API CDLOD_INLINE float cdlod_invsqrt(float number)
 {
-  long i;
-  float x2, y;
-  float threehalfs = 1.5f;
+  union
+  {
+    float f;
+    long i;
+  } conv;
 
-  x2 = number * 0.5f;
-  y = number;
-  i = *(long *)&y;           /* evil floating point bit hack */
-  i = 0x5f3759df - (i >> 1); /* what the fuck? */
-  y = *(float *)&i;
-  y = y * (threehalfs - (x2 * y * y)); /* 1st iteration */
-  return y;
+  float x2, y;
+  const float threehalfs = 1.5F;
+
+  x2 = number * 0.5F;
+  conv.f = number;
+  conv.i = 0x5f3759df - (conv.i >> 1); /* Magic number for approximation */
+  y = conv.f;
+  y = y * (threehalfs - (x2 * y * y)); /* One iteration of Newton's method */
+
+  return (y);
 }
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
