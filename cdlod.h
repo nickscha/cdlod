@@ -38,46 +38,9 @@ typedef struct cdlod_quadtree_node
 
 } cdlod_quadtree_node;
 
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstrict-aliasing"
-#pragma GCC diagnostic ignored "-Wuninitialized"
-#elif defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4699) /* MSVC-specific aliasing warning */
-#endif
-CDLOD_API CDLOD_INLINE float cdlod_invsqrt(float number)
+CDLOD_API CDLOD_INLINE float cdlod_dist2(float dx, float dy, float dz)
 {
-  union
-  {
-    float f;
-    long i;
-  } conv;
-
-  float x2, y;
-  const float threehalfs = 1.5F;
-
-  x2 = number * 0.5F;
-  conv.f = number;
-  conv.i = 0x5f3759df - (conv.i >> 1); /* Magic number for approximation */
-  y = conv.f;
-  y = y * (threehalfs - (x2 * y * y)); /* One iteration of Newton's method */
-
-  return (y);
-}
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#elif defined(_MSC_VER)
-#pragma warning(pop)
-#endif
-
-CDLOD_API CDLOD_INLINE float cdlod_sqrt(float x)
-{
-  if (x <= 0.0f)
-  {
-    return 0.0f;
-  }
-  return x * cdlod_invsqrt(x);
+  return dx * dx + dy * dy + dz * dz;
 }
 
 /* generate a single quad patch (two triangles) */
@@ -227,11 +190,11 @@ CDLOD_API CDLOD_INLINE void cdlod_quadtree_traverse(
     dx = camera_x - node.x;
     dy = camera_y - height(node.x, node.z);
     dz = camera_z - node.z;
-    dist = cdlod_sqrt(dx * dx + dy * dy + dz * dz);
+    dist = cdlod_dist2(dx, dy, dz);
 
     /* LOD selection: 0 = highest detail */
     lod = 0;
-    while (lod + 1 < lod_count && dist > lod_ranges[lod + 1])
+    while (lod + 1 < lod_count && dist > lod_ranges[lod + 1] * lod_ranges[lod + 1])
     {
       lod++;
     }
