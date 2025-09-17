@@ -1,0 +1,272 @@
+/* cdlod.h - v0.1 - public domain data structures - nickscha 2025
+
+A C89 standard compliant, single header, nostdlib (no C Standard Library) Continuous Distance-Dependent Level of Detail (CDLOD).
+
+LICENSE
+
+  Placed in the public domain and also MIT licensed.
+  See end of file for detailed license information.
+
+*/
+#ifndef CDLOD_H
+#define CDLOD_H
+
+/* #############################################################################
+ * # COMPILER SETTINGS
+ * #############################################################################
+ */
+/* Check if using C99 or later (inline is supported) */
+#if __STDC_VERSION__ >= 199901L
+#define CDLOD_INLINE inline
+#elif defined(__GNUC__) || defined(__clang__)
+#define CDLOD_INLINE __inline__
+#elif defined(_MSC_VER)
+#define CDLOD_INLINE __inline
+#else
+#define CDLOD_INLINE
+#endif
+
+#define CDLOD_API static
+
+typedef float (*cdlod_height_function)(float x, float z);
+
+/* quadtree node */
+typedef struct cdlod_quadtree_node
+{
+  float x, z; /* center position */
+  float size; /* patch size */
+
+} cdlod_quadtree_node;
+
+/* simple sqrt approximation using binary search */
+CDLOD_API CDLOD_INLINE float cdlod_sqrt(float x)
+{
+  float left, right, mid;
+  int i;
+
+  if (x <= 0.0f)
+  {
+    return 0.0f;
+  }
+
+  left = 0.0f;
+  right = x > 1.0f ? x : 1.0f;
+  mid = 0.0f;
+
+  for (i = 0; i < 16; ++i)
+  {
+    mid = (left + right) * 0.5f;
+    if (mid * mid < x)
+    {
+      left = mid;
+    }
+    else
+    {
+      right = mid;
+    }
+  }
+
+  return mid;
+}
+
+/* generate a single quad patch (two triangles) */
+CDLOD_API void cdlod_generate_patch(
+    float *vertices, int vertices_capacity, int *vertices_count,
+    int *indices, int indices_capacity, int *indices_count,
+    cdlod_quadtree_node *node, cdlod_height_function height)
+{
+  int base_vertex;
+  float half;
+  float x0, x1, z0, z1;
+
+  /* check capacity */
+  if (*vertices_count + 12 > vertices_capacity || *indices_count + 6 > indices_capacity)
+  {
+    return;
+  }
+
+  base_vertex = *vertices_count / 3;
+  half = node->size * 0.5f;
+
+  x0 = node->x - half;
+  x1 = node->x + half;
+  z0 = node->z - half;
+  z1 = node->z + half;
+
+  /* vertices */
+  vertices[(*vertices_count)++] = x0;
+  vertices[(*vertices_count)++] = height(x0, z0);
+  vertices[(*vertices_count)++] = z0;
+  vertices[(*vertices_count)++] = x1;
+  vertices[(*vertices_count)++] = height(x1, z0);
+  vertices[(*vertices_count)++] = z0;
+  vertices[(*vertices_count)++] = x1;
+  vertices[(*vertices_count)++] = height(x1, z1);
+  vertices[(*vertices_count)++] = z1;
+  vertices[(*vertices_count)++] = x0;
+  vertices[(*vertices_count)++] = height(x0, z1);
+  vertices[(*vertices_count)++] = z1;
+
+  /* indices (CCW winding) */
+  indices[(*indices_count)++] = base_vertex + 0;
+  indices[(*indices_count)++] = base_vertex + 2;
+  indices[(*indices_count)++] = base_vertex + 1;
+
+  indices[(*indices_count)++] = base_vertex + 0;
+  indices[(*indices_count)++] = base_vertex + 3;
+  indices[(*indices_count)++] = base_vertex + 2;
+}
+
+/* recursive quadtree traversal */
+CDLOD_API void cdlod_quadtree_traverse(
+    float *vertices, int vertices_capacity, int *vertices_count,
+    int *indices, int indices_capacity, int *indices_count,
+    cdlod_quadtree_node node,
+    float camera_x, float camera_y, float camera_z,
+    cdlod_height_function height,
+    int lod_count, float *lod_ranges,
+    float patch_size)
+{
+  float dx, dz, dist;
+  int lod;
+  float half;
+  cdlod_quadtree_node children[4];
+  int i;
+  float max_size;
+
+  dx = camera_x - node.x;
+  dz = camera_z - node.z;
+  dist = cdlod_sqrt(dx * dx + dz * dz);
+
+  /* LOD selection: 0 = highest detail, lod_count-1 = lowest detail */
+  lod = 0;
+  while (lod + 1 < lod_count && dist > lod_ranges[lod + 1])
+  {
+    lod++;
+  }
+
+  /* determine maximum allowed patch size for this LOD */
+  max_size = patch_size;
+
+  for (i = lod_count - 1; i > lod; --i)
+  {
+    max_size *= 0.5f; /* half per LOD above current */
+  }
+
+  /* leaf node: draw if small enough */
+  if (node.size <= max_size)
+  {
+    cdlod_generate_patch(vertices, vertices_capacity, vertices_count,
+                         indices, indices_capacity, indices_count,
+                         &node, height);
+    return;
+  }
+
+  /* subdivide into 4 children */
+  half = node.size * 0.5f;
+
+  children[0].x = node.x - half * 0.5f;
+  children[0].z = node.z - half * 0.5f;
+  children[0].size = half;
+  children[1].x = node.x + half * 0.5f;
+  children[1].z = node.z - half * 0.5f;
+  children[1].size = half;
+  children[2].x = node.x + half * 0.5f;
+  children[2].z = node.z + half * 0.5f;
+  children[2].size = half;
+  children[3].x = node.x - half * 0.5f;
+  children[3].z = node.z + half * 0.5f;
+  children[3].size = half;
+
+  for (i = 0; i < 4; ++i)
+  {
+    cdlod_quadtree_traverse(vertices, vertices_capacity, vertices_count,
+                            indices, indices_capacity, indices_count,
+                            children[i], camera_x, camera_y, camera_z,
+                            height, lod_count, lod_ranges,
+                            patch_size);
+  }
+}
+
+CDLOD_API void cdlod(
+    float *vertices, int vertices_capacity, int *vertices_count,
+    int *indices, int indices_capacity, int *indices_count,
+    float camera_x, float camera_y, float camera_z,
+    cdlod_height_function height,
+    float patch_size,
+    int lod_count,
+    float *lod_ranges,
+    int grid_radius)
+{
+  int cam_patch_x, cam_patch_z;
+  int gx, gz;
+  cdlod_quadtree_node root;
+
+  /* reset counts */
+  *vertices_count = 0;
+  *indices_count = 0;
+
+  /* camera patch coordinates */
+  cam_patch_x = (int)(camera_x / patch_size);
+  cam_patch_z = (int)(camera_z / patch_size);
+
+  for (gx = -grid_radius; gx <= grid_radius; ++gx)
+  {
+    for (gz = -grid_radius; gz <= grid_radius; ++gz)
+    {
+      root.x = (float)(cam_patch_x + gx) * patch_size + patch_size * 0.5f;
+      root.z = (float)(cam_patch_z + gz) * patch_size + patch_size * 0.5f;
+      root.size = patch_size;
+
+      cdlod_quadtree_traverse(vertices, vertices_capacity, vertices_count,
+                              indices, indices_capacity, indices_count,
+                              root, camera_x, camera_y, camera_z,
+                              height, lod_count, lod_ranges,
+                              patch_size);
+    }
+  }
+}
+
+#endif /* CDLOD_H */
+
+/*
+   ------------------------------------------------------------------------------
+   This software is available under 2 licenses -- choose whichever you prefer.
+   ------------------------------------------------------------------------------
+   ALTERNATIVE A - MIT License
+   Copyright (c) 2025 nickscha
+   Permission is hereby granted, free of charge, to any person obtaining a copy of
+   this software and associated documentation files (the "Software"), to deal in
+   the Software without restriction, including without limitation the rights to
+   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+   of the Software, and to permit persons to whom the Software is furnished to do
+   so, subject to the following conditions:
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+   ------------------------------------------------------------------------------
+   ALTERNATIVE B - Public Domain (www.unlicense.org)
+   This is free and unencumbered software released into the public domain.
+   Anyone is free to copy, modify, publish, use, compile, sell, or distribute this
+   software, either in source code form or as a compiled binary, for any purpose,
+   commercial or non-commercial, and by any means.
+   In jurisdictions that recognize copyright laws, the author or authors of this
+   software dedicate any and all copyright interest in the software to the public
+   domain. We make this dedication for the benefit of the public at large and to
+   the detriment of our heirs and successors. We intend this dedication to be an
+   overt act of relinquishment in perpetuity of all present and future rights to
+   this software under copyright law.
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+   ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+   ------------------------------------------------------------------------------
+*/
