@@ -61,6 +61,7 @@ int main() {
     float lod_ranges[] = {0.0f, 50.0f, 100.0f, 200.0f, 400.0f};
     float patch_size = 64.0f;
     int grid_radius = 1;
+    float skirt_depth = 5.0f;
 
     /* (4) Define an eye/camera position from which the CDLOD grid should be generated */
     float camera_position_x = 0.0f;
@@ -75,7 +76,8 @@ int main() {
         custom_height_function,                                  /* Y-Heightmap function                            */
         patch_size,                                              /* How large is each patch                         */
         5, lod_ranges,                                           /* Number of lod levels and the ranges             */
-        grid_radius                                              /* How big is the grid (1=3x3, 3=5x5 patches, ...) */
+        grid_radius,                                             /* How big is the grid (1=3x3, 3=5x5 patches, ...) */
+        skirt_depth
     );
  
     return 0;

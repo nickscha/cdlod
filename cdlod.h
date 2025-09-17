@@ -73,14 +73,14 @@ CDLOD_API CDLOD_INLINE float cdlod_sqrt(float x)
 CDLOD_API CDLOD_INLINE void cdlod_generate_patch(
     float *vertices, int vertices_capacity, int *vertices_count,
     int *indices, int indices_capacity, int *indices_count,
-    cdlod_quadtree_node *node, cdlod_height_function height)
+    cdlod_quadtree_node *node, cdlod_height_function height, float skirt_depth)
 {
   int base_vertex;
   float half;
   float x0, x1, z0, z1;
 
-  /* check capacity */
-  if (*vertices_count + 12 > vertices_capacity || *indices_count + 6 > indices_capacity)
+  /* check capacity (4 verts + 4*2 skirt verts = 12 verts, each 3 floats = 36) */
+  if (*vertices_count + 36 > vertices_capacity || *indices_count + (6 + 4 * 6) > indices_capacity)
   {
     return;
   }
@@ -115,6 +115,76 @@ CDLOD_API CDLOD_INLINE void cdlod_generate_patch(
   indices[(*indices_count)++] = base_vertex + 0;
   indices[(*indices_count)++] = base_vertex + 3;
   indices[(*indices_count)++] = base_vertex + 2;
+
+  /* skirts: each edge = 2 new verts + 2 triangles */
+
+  /* left edge (v0 -> v3) */
+  vertices[(*vertices_count)++] = x0;
+  vertices[(*vertices_count)++] = height(x0, z0) - skirt_depth;
+  vertices[(*vertices_count)++] = z0;
+
+  vertices[(*vertices_count)++] = x0;
+  vertices[(*vertices_count)++] = height(x0, z1) - skirt_depth;
+  vertices[(*vertices_count)++] = z1;
+
+  indices[(*indices_count)++] = base_vertex + 0;
+  indices[(*indices_count)++] = base_vertex + 4;
+  indices[(*indices_count)++] = base_vertex + 3;
+
+  indices[(*indices_count)++] = base_vertex + 3;
+  indices[(*indices_count)++] = base_vertex + 4;
+  indices[(*indices_count)++] = base_vertex + 5;
+
+  /* right edge (v1 -> v2) */
+  vertices[(*vertices_count)++] = x1;
+  vertices[(*vertices_count)++] = height(x1, z0) - skirt_depth;
+  vertices[(*vertices_count)++] = z0;
+
+  vertices[(*vertices_count)++] = x1;
+  vertices[(*vertices_count)++] = height(x1, z1) - skirt_depth;
+  vertices[(*vertices_count)++] = z1;
+
+  indices[(*indices_count)++] = base_vertex + 1;
+  indices[(*indices_count)++] = base_vertex + 2;
+  indices[(*indices_count)++] = base_vertex + 6;
+
+  indices[(*indices_count)++] = base_vertex + 2;
+  indices[(*indices_count)++] = base_vertex + 7;
+  indices[(*indices_count)++] = base_vertex + 6;
+
+  /* bottom edge (v0 -> v1) */
+  vertices[(*vertices_count)++] = x0;
+  vertices[(*vertices_count)++] = height(x0, z0) - skirt_depth;
+  vertices[(*vertices_count)++] = z0;
+
+  vertices[(*vertices_count)++] = x1;
+  vertices[(*vertices_count)++] = height(x1, z0) - skirt_depth;
+  vertices[(*vertices_count)++] = z0;
+
+  indices[(*indices_count)++] = base_vertex + 0;
+  indices[(*indices_count)++] = base_vertex + 1;
+  indices[(*indices_count)++] = base_vertex + 8;
+
+  indices[(*indices_count)++] = base_vertex + 1;
+  indices[(*indices_count)++] = base_vertex + 9;
+  indices[(*indices_count)++] = base_vertex + 8;
+
+  /* top edge (v3 -> v2) */
+  vertices[(*vertices_count)++] = x0;
+  vertices[(*vertices_count)++] = height(x0, z1) - skirt_depth;
+  vertices[(*vertices_count)++] = z1;
+
+  vertices[(*vertices_count)++] = x1;
+  vertices[(*vertices_count)++] = height(x1, z1) - skirt_depth;
+  vertices[(*vertices_count)++] = z1;
+
+  indices[(*indices_count)++] = base_vertex + 3;
+  indices[(*indices_count)++] = base_vertex + 10;
+  indices[(*indices_count)++] = base_vertex + 2;
+
+  indices[(*indices_count)++] = base_vertex + 2;
+  indices[(*indices_count)++] = base_vertex + 10;
+  indices[(*indices_count)++] = base_vertex + 11;
 }
 
 /* recursive quadtree traversal */
@@ -125,9 +195,9 @@ CDLOD_API CDLOD_INLINE void cdlod_quadtree_traverse(
     float camera_x, float camera_y, float camera_z,
     cdlod_height_function height,
     int lod_count, float *lod_ranges,
-    float patch_size)
+    float patch_size, float skirt_depth)
 {
-  float dx, dz, dist;
+  float dx, dy, dz, dist;
   int lod;
   float half;
   cdlod_quadtree_node children[4];
@@ -135,8 +205,9 @@ CDLOD_API CDLOD_INLINE void cdlod_quadtree_traverse(
   float max_size;
 
   dx = camera_x - node.x;
+  dy = camera_y - height(node.x, node.z);
   dz = camera_z - node.z;
-  dist = cdlod_sqrt(dx * dx + dz * dz);
+  dist = cdlod_sqrt(dx * dx + dy * dy + dz * dz);
 
   /* LOD selection: 0 = highest detail, lod_count-1 = lowest detail */
   lod = 0;
@@ -158,7 +229,7 @@ CDLOD_API CDLOD_INLINE void cdlod_quadtree_traverse(
   {
     cdlod_generate_patch(vertices, vertices_capacity, vertices_count,
                          indices, indices_capacity, indices_count,
-                         &node, height);
+                         &node, height, skirt_depth);
     return;
   }
 
@@ -184,7 +255,7 @@ CDLOD_API CDLOD_INLINE void cdlod_quadtree_traverse(
                             indices, indices_capacity, indices_count,
                             children[i], camera_x, camera_y, camera_z,
                             height, lod_count, lod_ranges,
-                            patch_size);
+                            patch_size, skirt_depth);
   }
 }
 
@@ -196,7 +267,8 @@ CDLOD_API CDLOD_INLINE void cdlod(
     float patch_size,
     int lod_count,
     float *lod_ranges,
-    int grid_radius)
+    int grid_radius,
+    float skirt_depth)
 {
   int cam_patch_x, cam_patch_z;
   int gx, gz;
@@ -222,7 +294,7 @@ CDLOD_API CDLOD_INLINE void cdlod(
                               indices, indices_capacity, indices_count,
                               root, camera_x, camera_y, camera_z,
                               height, lod_count, lod_ranges,
-                              patch_size);
+                              patch_size, skirt_depth);
     }
   }
 }
