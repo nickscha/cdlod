@@ -70,7 +70,7 @@ CDLOD_API CDLOD_INLINE float cdlod_sqrt(float x)
 }
 
 /* generate a single quad patch (two triangles) */
-CDLOD_API void cdlod_generate_patch(
+CDLOD_API CDLOD_INLINE void cdlod_generate_patch(
     float *vertices, int vertices_capacity, int *vertices_count,
     int *indices, int indices_capacity, int *indices_count,
     cdlod_quadtree_node *node, cdlod_height_function height)
@@ -118,7 +118,7 @@ CDLOD_API void cdlod_generate_patch(
 }
 
 /* recursive quadtree traversal */
-CDLOD_API void cdlod_quadtree_traverse(
+CDLOD_API CDLOD_INLINE void cdlod_quadtree_traverse(
     float *vertices, int vertices_capacity, int *vertices_count,
     int *indices, int indices_capacity, int *indices_count,
     cdlod_quadtree_node node,
@@ -188,7 +188,7 @@ CDLOD_API void cdlod_quadtree_traverse(
   }
 }
 
-CDLOD_API void cdlod(
+CDLOD_API CDLOD_INLINE void cdlod(
     float *vertices, int vertices_capacity, int *vertices_count,
     int *indices, int indices_capacity, int *indices_count,
     float camera_x, float camera_y, float camera_z,
