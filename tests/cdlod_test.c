@@ -24,8 +24,8 @@ float custom_height_function(float x, float z)
 void cdlod_test_simple(void)
 {
   /* (2) Define a memory buffer for the gneerated cdlod vertice and indices */
-#define VERTICES_CAPACITY 200000
-#define INDICES_CAPACITY 200000
+#define VERTICES_CAPACITY 10000
+#define INDICES_CAPACITY 10000
   float vertices[VERTICES_CAPACITY];
   int indices[INDICES_CAPACITY];
   int vertices_count = 0;
@@ -52,6 +52,9 @@ void cdlod_test_simple(void)
       patch_size,                                              /* How large is each patch                         */
       5, lod_ranges,                                           /* Number of lod levels and the ranges             */
       grid_radius);                                            /* How big is the grid (1=3x3, 3=5x5 patches, ...) */
+
+  assert(vertices_count < VERTICES_CAPACITY);
+   assert(indices_count < INDICES_CAPACITY);
 
   assert(vertices_count > 0);
   assert(indices_count > 0);
