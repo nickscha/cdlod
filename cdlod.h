@@ -38,6 +38,14 @@ typedef struct cdlod_quadtree_node
 
 } cdlod_quadtree_node;
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
+#pragma GCC diagnostic ignored "-Wuninitialized"
+#elif defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4699) /* MSVC-specific aliasing warning */
+#endif
 CDLOD_API CDLOD_INLINE float cdlod_invsqrt(float number)
 {
   long i;
@@ -52,6 +60,11 @@ CDLOD_API CDLOD_INLINE float cdlod_invsqrt(float number)
   y = y * (threehalfs - (x2 * y * y)); /* 1st iteration */
   return y;
 }
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#elif defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 CDLOD_API CDLOD_INLINE float cdlod_sqrt(float x)
 {
@@ -180,75 +193,90 @@ CDLOD_API CDLOD_INLINE void cdlod_generate_patch(
   indices[(*indices_count)++] = base_vertex + 11;
 }
 
-/* recursive quadtree traversal */
+/* quadtree traversal */
+/* iterative quadtree traversal using manual stack */
 CDLOD_API CDLOD_INLINE void cdlod_quadtree_traverse(
     float *vertices, int vertices_capacity, int *vertices_count,
     int *indices, int indices_capacity, int *indices_count,
-    cdlod_quadtree_node node,
+    cdlod_quadtree_node root,
     float camera_x, float camera_y, float camera_z,
     cdlod_height_function height,
     int lod_count, float *lod_ranges,
     float patch_size, float skirt_depth)
 {
-  float dx, dy, dz, dist;
-  int lod;
-  float half;
-  cdlod_quadtree_node children[4];
-  int i;
-  float max_size;
+  /* stack-based traversal */
+  cdlod_quadtree_node stack[64]; /* supports depth ~64, more than enough */
+  int stack_size = 0;
 
-  dx = camera_x - node.x;
-  dy = camera_y - height(node.x, node.z);
-  dz = camera_z - node.z;
-  dist = cdlod_sqrt(dx * dx + dy * dy + dz * dz);
+  stack[stack_size++] = root;
 
-  /* LOD selection: 0 = highest detail, lod_count-1 = lowest detail */
-  lod = 0;
-  while (lod + 1 < lod_count && dist > lod_ranges[lod + 1])
+  while (stack_size > 0)
   {
-    lod++;
-  }
+    cdlod_quadtree_node node = stack[--stack_size];
+    float dx, dy, dz, dist;
+    int lod;
+    float half, max_size;
+    cdlod_quadtree_node children[4];
 
-  /* determine maximum allowed patch size for this LOD */
-  max_size = patch_size;
+    /* distance to node center */
+    dx = camera_x - node.x;
+    dy = camera_y - height(node.x, node.z);
+    dz = camera_z - node.z;
+    dist = cdlod_sqrt(dx * dx + dy * dy + dz * dz);
 
-  for (i = lod_count - 1; i > lod; --i)
-  {
-    max_size *= 0.5f; /* half per LOD above current */
-  }
+    /* LOD selection: 0 = highest detail */
+    lod = 0;
+    while (lod + 1 < lod_count && dist > lod_ranges[lod + 1])
+    {
+      lod++;
+    }
 
-  /* leaf node: draw if small enough */
-  if (node.size <= max_size)
-  {
-    cdlod_generate_patch(vertices, vertices_capacity, vertices_count,
-                         indices, indices_capacity, indices_count,
-                         &node, height, skirt_depth);
-    return;
-  }
+    /* determine maximum allowed patch size for this LOD */
+    max_size = patch_size;
+    {
+      int i;
+      for (i = lod_count - 1; i > lod; --i)
+      {
+        max_size *= 0.5f; /* halve per step above current */
+      }
+    }
 
-  /* subdivide into 4 children */
-  half = node.size * 0.5f;
+    /* leaf node: generate patch */
+    if (node.size <= max_size)
+    {
+      cdlod_generate_patch(vertices, vertices_capacity, vertices_count,
+                           indices, indices_capacity, indices_count,
+                           &node, height, skirt_depth);
+      continue;
+    }
 
-  children[0].x = node.x - half * 0.5f;
-  children[0].z = node.z - half * 0.5f;
-  children[0].size = half;
-  children[1].x = node.x + half * 0.5f;
-  children[1].z = node.z - half * 0.5f;
-  children[1].size = half;
-  children[2].x = node.x + half * 0.5f;
-  children[2].z = node.z + half * 0.5f;
-  children[2].size = half;
-  children[3].x = node.x - half * 0.5f;
-  children[3].z = node.z + half * 0.5f;
-  children[3].size = half;
+    /* subdivide into 4 children */
+    half = node.size * 0.5f;
 
-  for (i = 0; i < 4; ++i)
-  {
-    cdlod_quadtree_traverse(vertices, vertices_capacity, vertices_count,
-                            indices, indices_capacity, indices_count,
-                            children[i], camera_x, camera_y, camera_z,
-                            height, lod_count, lod_ranges,
-                            patch_size, skirt_depth);
+    children[0].x = node.x - half * 0.5f;
+    children[0].z = node.z - half * 0.5f;
+    children[0].size = half;
+
+    children[1].x = node.x + half * 0.5f;
+    children[1].z = node.z - half * 0.5f;
+    children[1].size = half;
+
+    children[2].x = node.x + half * 0.5f;
+    children[2].z = node.z + half * 0.5f;
+    children[2].size = half;
+
+    children[3].x = node.x - half * 0.5f;
+    children[3].z = node.z + half * 0.5f;
+    children[3].size = half;
+
+    /* push children on stack */
+    if (stack_size + 4 <= 64)
+    {
+      stack[stack_size++] = children[0];
+      stack[stack_size++] = children[1];
+      stack[stack_size++] = children[2];
+      stack[stack_size++] = children[3];
+    }
   }
 }
 
