@@ -38,35 +38,28 @@ typedef struct cdlod_quadtree_node
 
 } cdlod_quadtree_node;
 
-/* simple sqrt approximation using binary search */
+CDLOD_API CDLOD_INLINE float cdlod_invsqrt(float number)
+{
+  long i;
+  float x2, y;
+  float threehalfs = 1.5f;
+
+  x2 = number * 0.5f;
+  y = number;
+  i = *(long *)&y;           /* evil floating point bit hack */
+  i = 0x5f3759df - (i >> 1); /* what the fuck? */
+  y = *(float *)&i;
+  y = y * (threehalfs - (x2 * y * y)); /* 1st iteration */
+  return y;
+}
+
 CDLOD_API CDLOD_INLINE float cdlod_sqrt(float x)
 {
-  float left, right, mid;
-  int i;
-
   if (x <= 0.0f)
   {
     return 0.0f;
   }
-
-  left = 0.0f;
-  right = x > 1.0f ? x : 1.0f;
-  mid = 0.0f;
-
-  for (i = 0; i < 16; ++i)
-  {
-    mid = (left + right) * 0.5f;
-    if (mid * mid < x)
-    {
-      left = mid;
-    }
-    else
-    {
-      right = mid;
-    }
-  }
-
-  return mid;
+  return x * cdlod_invsqrt(x);
 }
 
 /* generate a single quad patch (two triangles) */
