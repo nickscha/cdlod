@@ -185,7 +185,8 @@ CDLOD_API CDLOD_INLINE void cdlod_quadtree_traverse(
     cdlod_quadtree_node node = stack[--stack_size];
     float dx, dy, dz, dist;
     int lod;
-    float half, max_size;
+    float max_size;
+    int i;
 
     /* distance to node center */
     dx = camera_x - node.x;
@@ -202,12 +203,10 @@ CDLOD_API CDLOD_INLINE void cdlod_quadtree_traverse(
 
     /* determine maximum allowed patch size for this LOD */
     max_size = patch_size;
+
+    for (i = lod_count - 1; i > lod; --i)
     {
-      int i;
-      for (i = lod_count - 1; i > lod; --i)
-      {
-        max_size *= 0.5f; /* halve per step above current */
-      }
+      max_size *= 0.5f; /* halve per step above current */
     }
 
     /* leaf node: generate patch */
@@ -219,12 +218,10 @@ CDLOD_API CDLOD_INLINE void cdlod_quadtree_traverse(
       continue;
     }
 
-    /* subdivide into 4 children */
-    half = node.size * 0.5f;
-
-    /* push children on stack */
+    /* subdivide into 4 children  & push children on stack */
     if (stack_size + 4 <= 64)
     {
+      float half = node.size * 0.5f;
       cdlod_quadtree_node children[4];
 
       children[0].x = node.x - half * 0.5f;
