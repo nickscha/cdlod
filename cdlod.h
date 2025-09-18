@@ -171,7 +171,7 @@ CDLOD_API CDLOD_INLINE void cdlod_quadtree_traverse(
     cdlod_quadtree_node root,
     float camera_x, float camera_y, float camera_z,
     cdlod_height_function height,
-    int lod_count, float *lod_ranges,
+    int lod_count, float *lod_ranges_sq,
     float patch_size, float skirt_depth)
 {
   /* stack-based traversal */
@@ -196,7 +196,7 @@ CDLOD_API CDLOD_INLINE void cdlod_quadtree_traverse(
 
     /* LOD selection: 0 = highest detail */
     lod = 0;
-    while (lod + 1 < lod_count && dist > lod_ranges[lod + 1] * lod_ranges[lod + 1])
+    while (lod + 1 < lod_count && dist > lod_ranges_sq[lod + 1])
     {
       lod++;
     }
@@ -263,11 +263,20 @@ CDLOD_API CDLOD_INLINE void cdlod(
 {
   int cam_patch_x, cam_patch_z;
   int gx, gz;
+  float lod_ranges_sq[8];
+  int i;
+
   cdlod_quadtree_node root;
 
   /* reset counts */
   *vertices_count = 0;
   *indices_count = 0;
+
+  /* pre-cache lod_ranges squared assuming lod_count <= 8 */
+  for (i = 0; i < lod_count; ++i)
+  {
+    lod_ranges_sq[i] = lod_ranges[i] * lod_ranges[i];
+  }
 
   /* camera patch coordinates */
   cam_patch_x = (int)(camera_x / patch_size);
@@ -284,7 +293,7 @@ CDLOD_API CDLOD_INLINE void cdlod(
       cdlod_quadtree_traverse(vertices, vertices_capacity, vertices_count,
                               indices, indices_capacity, indices_count,
                               root, camera_x, camera_y, camera_z,
-                              height, lod_count, lod_ranges,
+                              height, lod_count, lod_ranges_sq,
                               patch_size, skirt_depth);
     }
   }
