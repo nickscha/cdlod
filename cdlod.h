@@ -186,7 +186,6 @@ CDLOD_API CDLOD_INLINE void cdlod_quadtree_traverse(
     float dx, dy, dz, dist;
     int lod;
     float half, max_size;
-    cdlod_quadtree_node children[4];
 
     /* distance to node center */
     dx = camera_x - node.x;
@@ -223,25 +222,27 @@ CDLOD_API CDLOD_INLINE void cdlod_quadtree_traverse(
     /* subdivide into 4 children */
     half = node.size * 0.5f;
 
-    children[0].x = node.x - half * 0.5f;
-    children[0].z = node.z - half * 0.5f;
-    children[0].size = half;
-
-    children[1].x = node.x + half * 0.5f;
-    children[1].z = node.z - half * 0.5f;
-    children[1].size = half;
-
-    children[2].x = node.x + half * 0.5f;
-    children[2].z = node.z + half * 0.5f;
-    children[2].size = half;
-
-    children[3].x = node.x - half * 0.5f;
-    children[3].z = node.z + half * 0.5f;
-    children[3].size = half;
-
     /* push children on stack */
     if (stack_size + 4 <= 64)
     {
+      cdlod_quadtree_node children[4];
+
+      children[0].x = node.x - half * 0.5f;
+      children[0].z = node.z - half * 0.5f;
+      children[0].size = half;
+
+      children[1].x = node.x + half * 0.5f;
+      children[1].z = node.z - half * 0.5f;
+      children[1].size = half;
+
+      children[2].x = node.x + half * 0.5f;
+      children[2].z = node.z + half * 0.5f;
+      children[2].size = half;
+
+      children[3].x = node.x - half * 0.5f;
+      children[3].z = node.z + half * 0.5f;
+      children[3].size = half;
+
       stack[stack_size++] = children[0];
       stack[stack_size++] = children[1];
       stack[stack_size++] = children[2];
