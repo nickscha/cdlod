@@ -15,7 +15,7 @@ LICENSE
 #include "../deps/perf.h" /* Simple Performance profiler */
 
 /* (1) Define a height function for a given x and z coordinate */
-float custom_height_function(float x, float z)
+static float custom_height_function(float x, float z)
 {
   /* Flat Plane (replace with perlin/simplex noise or other height algorithms) */
   return 0.0f * (x + z);
