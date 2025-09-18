@@ -44,12 +44,16 @@ void cdlod_test_simple(void)
   float camera_position_y = 10.0f;
   float camera_position_z = 0.0f;
 
+  float camera_front_x = 0.0f;
+  float camera_front_z = -1.0f;
+
   /* (5) Generate the CDLOD vertices and indices */
   PERF_PROFILE_WITH_NAME(
       { cdlod(
             vertices, VERTICES_CAPACITY, &vertices_count,            /* Vertices data                                   */
             indices, INDICES_CAPACITY, &indices_count,               /* Indices data                                    */
             camera_position_x, camera_position_y, camera_position_z, /* Camera position                                 */
+            camera_front_x, camera_front_z,                          /* Camera front vector                             */
             custom_height_function,                                  /* Y-Heightmap function                            */
             patch_size,                                              /* How large is each patch                         */
             5, lod_ranges,                                           /* Number of lod levels and the ranges             */
