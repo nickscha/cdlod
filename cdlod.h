@@ -38,11 +38,6 @@ typedef struct cdlod_quadtree_node
 
 } cdlod_quadtree_node;
 
-CDLOD_API CDLOD_INLINE float cdlod_dist2(float dx, float dy, float dz)
-{
-  return dx * dx + dy * dy + dz * dz;
-}
-
 /* generate a single quad patch (two triangles) */
 CDLOD_API CDLOD_INLINE void cdlod_generate_patch(
     float *vertices, int vertices_capacity, int *vertices_count,
@@ -197,7 +192,7 @@ CDLOD_API CDLOD_INLINE void cdlod_quadtree_traverse(
     dx = camera_x - node.x;
     dy = camera_y - height(node.x, node.z);
     dz = camera_z - node.z;
-    dist = cdlod_dist2(dx, dy, dz);
+    dist = dx * dx + dy * dy + dz * dz;
 
     /* LOD selection: 0 = highest detail */
     lod = 0;
