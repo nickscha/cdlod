@@ -52,6 +52,7 @@ CDLOD_API CDLOD_INLINE void cdlod_generate_patch(
   int base_vertex;
   float half;
   float x0, x1, z0, z1;
+  float h00, h10, h11, h01;
 
   /* check capacity (4 verts + 4*2 skirt verts = 12 verts, each 3 floats = 36) */
   if (*vertices_count + 36 > vertices_capacity || *indices_count + (6 + 4 * 6) > indices_capacity)
@@ -67,18 +68,24 @@ CDLOD_API CDLOD_INLINE void cdlod_generate_patch(
   z0 = node->z - half;
   z1 = node->z + half;
 
+  /* Cache corner heights */
+  h00 = height(x0, z0);
+  h10 = height(x1, z0);
+  h11 = height(x1, z1);
+  h01 = height(x0, z1);
+
   /* vertices */
   vertices[(*vertices_count)++] = x0;
-  vertices[(*vertices_count)++] = height(x0, z0);
+  vertices[(*vertices_count)++] = h00;
   vertices[(*vertices_count)++] = z0;
   vertices[(*vertices_count)++] = x1;
-  vertices[(*vertices_count)++] = height(x1, z0);
+  vertices[(*vertices_count)++] = h10;
   vertices[(*vertices_count)++] = z0;
   vertices[(*vertices_count)++] = x1;
-  vertices[(*vertices_count)++] = height(x1, z1);
+  vertices[(*vertices_count)++] = h11;
   vertices[(*vertices_count)++] = z1;
   vertices[(*vertices_count)++] = x0;
-  vertices[(*vertices_count)++] = height(x0, z1);
+  vertices[(*vertices_count)++] = h01;
   vertices[(*vertices_count)++] = z1;
 
   /* indices (CCW winding) */
@@ -94,11 +101,11 @@ CDLOD_API CDLOD_INLINE void cdlod_generate_patch(
 
   /* left edge (v0 -> v3) */
   vertices[(*vertices_count)++] = x0;
-  vertices[(*vertices_count)++] = height(x0, z0) - skirt_depth;
+  vertices[(*vertices_count)++] = h00 - skirt_depth;
   vertices[(*vertices_count)++] = z0;
 
   vertices[(*vertices_count)++] = x0;
-  vertices[(*vertices_count)++] = height(x0, z1) - skirt_depth;
+  vertices[(*vertices_count)++] = h01 - skirt_depth;
   vertices[(*vertices_count)++] = z1;
 
   indices[(*indices_count)++] = base_vertex + 0;
@@ -111,11 +118,11 @@ CDLOD_API CDLOD_INLINE void cdlod_generate_patch(
 
   /* right edge (v1 -> v2) */
   vertices[(*vertices_count)++] = x1;
-  vertices[(*vertices_count)++] = height(x1, z0) - skirt_depth;
+  vertices[(*vertices_count)++] = h10 - skirt_depth;
   vertices[(*vertices_count)++] = z0;
 
   vertices[(*vertices_count)++] = x1;
-  vertices[(*vertices_count)++] = height(x1, z1) - skirt_depth;
+  vertices[(*vertices_count)++] = h11 - skirt_depth;
   vertices[(*vertices_count)++] = z1;
 
   indices[(*indices_count)++] = base_vertex + 1;
@@ -128,11 +135,11 @@ CDLOD_API CDLOD_INLINE void cdlod_generate_patch(
 
   /* bottom edge (v0 -> v1) */
   vertices[(*vertices_count)++] = x0;
-  vertices[(*vertices_count)++] = height(x0, z0) - skirt_depth;
+  vertices[(*vertices_count)++] = h00 - skirt_depth;
   vertices[(*vertices_count)++] = z0;
 
   vertices[(*vertices_count)++] = x1;
-  vertices[(*vertices_count)++] = height(x1, z0) - skirt_depth;
+  vertices[(*vertices_count)++] = h10 - skirt_depth;
   vertices[(*vertices_count)++] = z0;
 
   indices[(*indices_count)++] = base_vertex + 0;
@@ -145,11 +152,11 @@ CDLOD_API CDLOD_INLINE void cdlod_generate_patch(
 
   /* top edge (v3 -> v2) */
   vertices[(*vertices_count)++] = x0;
-  vertices[(*vertices_count)++] = height(x0, z1) - skirt_depth;
+  vertices[(*vertices_count)++] = h01 - skirt_depth;
   vertices[(*vertices_count)++] = z1;
 
   vertices[(*vertices_count)++] = x1;
-  vertices[(*vertices_count)++] = height(x1, z1) - skirt_depth;
+  vertices[(*vertices_count)++] = h11 - skirt_depth;
   vertices[(*vertices_count)++] = z1;
 
   indices[(*indices_count)++] = base_vertex + 3;
