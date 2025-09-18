@@ -222,28 +222,22 @@ CDLOD_API CDLOD_INLINE void cdlod_quadtree_traverse(
     if (stack_size + 4 <= 64)
     {
       float half = node.size * 0.5f;
-      cdlod_quadtree_node children[4];
 
-      children[0].x = node.x - half * 0.5f;
-      children[0].z = node.z - half * 0.5f;
-      children[0].size = half;
+      stack[stack_size].x = node.x - half * 0.5f;
+      stack[stack_size].z = node.z - half * 0.5f;
+      stack[stack_size++].size = half;
 
-      children[1].x = node.x + half * 0.5f;
-      children[1].z = node.z - half * 0.5f;
-      children[1].size = half;
+      stack[stack_size].x = node.x + half * 0.5f;
+      stack[stack_size].z = node.z - half * 0.5f;
+      stack[stack_size++].size = half;
 
-      children[2].x = node.x + half * 0.5f;
-      children[2].z = node.z + half * 0.5f;
-      children[2].size = half;
+      stack[stack_size].x = node.x + half * 0.5f;
+      stack[stack_size].z = node.z + half * 0.5f;
+      stack[stack_size++].size = half;
 
-      children[3].x = node.x - half * 0.5f;
-      children[3].z = node.z + half * 0.5f;
-      children[3].size = half;
-
-      stack[stack_size++] = children[0];
-      stack[stack_size++] = children[1];
-      stack[stack_size++] = children[2];
-      stack[stack_size++] = children[3];
+      stack[stack_size].x = node.x - half * 0.5f;
+      stack[stack_size].z = node.z + half * 0.5f;
+      stack[stack_size++].size = half;
     }
   }
 }
