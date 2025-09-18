@@ -36,8 +36,8 @@ void cdlod_test_simple(void)
   /*     First = Highest Level of Detail                                         */
   float lod_ranges[] = {0.0f, 50.0f, 100.0f, 200.0f, 400.0f};
   float patch_size = 64.0f;
-  int grid_radius = 1;
-  float skirt_depth = 5.0f;
+  int grid_radius = 9; /* 1 = 3x3 patches */
+  float skirt_depth = 10.0f;
 
   /* (4) Define an eye/camera position from which the CDLOD grid should be generated */
   float camera_position_x = 0.0f;
@@ -45,15 +45,24 @@ void cdlod_test_simple(void)
   float camera_position_z = 0.0f;
 
   /* (5) Generate the CDLOD vertices and indices */
-  cdlod(
-      vertices, VERTICES_CAPACITY, &vertices_count,            /* Vertices data                                   */
-      indices, INDICES_CAPACITY, &indices_count,               /* Indices data                                    */
-      camera_position_x, camera_position_y, camera_position_z, /* Camera position                                 */
-      custom_height_function,                                  /* Y-Heightmap function                            */
-      patch_size,                                              /* How large is each patch                         */
-      5, lod_ranges,                                           /* Number of lod levels and the ranges             */
-      grid_radius,                                             /* How big is the grid (1=3x3, 3=5x5 patches, ...) */
-      skirt_depth);
+  PERF_PROFILE_WITH_NAME(
+      { cdlod(
+            vertices, VERTICES_CAPACITY, &vertices_count,            /* Vertices data                                   */
+            indices, INDICES_CAPACITY, &indices_count,               /* Indices data                                    */
+            camera_position_x, camera_position_y, camera_position_z, /* Camera position                                 */
+            custom_height_function,                                  /* Y-Heightmap function                            */
+            patch_size,                                              /* How large is each patch                         */
+            5, lod_ranges,                                           /* Number of lod levels and the ranges             */
+            grid_radius,                                             /* How big is the grid (1=3x3, 3=5x5 patches, ...) */
+            skirt_depth); }, "cdlod");
+
+  test_print_string("vertices count: ");
+  test_print_int(vertices_count);
+  test_print_string("\n");
+
+  test_print_string(" indices count: ");
+  test_print_int(indices_count);
+  test_print_string("\n");
 
   assert(vertices_count < VERTICES_CAPACITY);
   assert(indices_count < INDICES_CAPACITY);
