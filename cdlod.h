@@ -246,7 +246,6 @@ CDLOD_API CDLOD_INLINE void cdlod(
     float *vertices, int vertices_capacity, int *vertices_count,
     int *indices, int indices_capacity, int *indices_count,
     float camera_x, float camera_y, float camera_z,
-    float camera_front_x, float camera_front_z,
     cdlod_height_function height,
     float patch_size,
     int lod_count,
@@ -282,18 +281,6 @@ CDLOD_API CDLOD_INLINE void cdlod(
       root.x = (float)(cam_patch_x + gx) * patch_size + patch_size * 0.5f;
       root.z = (float)(cam_patch_z + gz) * patch_size + patch_size * 0.5f;
       root.size = patch_size;
-
-      /* --- Behind-camera culling --- */
-      {
-        float vx = root.x - camera_x;
-        float vz = root.z - camera_z;
-        float dot = vx * camera_front_x + vz * camera_front_z;
-
-        if (dot < 0.0f)
-        {
-          continue; /* skip patches behind the camera */
-        }
-      }
 
       cdlod_quadtree_traverse(vertices, vertices_capacity, vertices_count,
                               indices, indices_capacity, indices_count,
