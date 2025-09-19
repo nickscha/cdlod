@@ -28,6 +28,11 @@ LICENSE
 
 #define CDLOD_API static
 
+/* Maximium number of lod levels */
+#ifndef CDLOD_MAX_LODS
+#define CDLOD_MAX_LODS 8
+#endif
+
 typedef float (*cdlod_height_function)(float x, float z);
 
 /* quadtree node */
@@ -255,7 +260,7 @@ CDLOD_API CDLOD_INLINE void cdlod(
 {
   int cam_patch_x, cam_patch_z;
   int gx, gz;
-  float lod_ranges_sq[8];
+  float lod_ranges_sq[CDLOD_MAX_LODS];
   int i;
 
   cdlod_quadtree_node root;
@@ -264,7 +269,7 @@ CDLOD_API CDLOD_INLINE void cdlod(
   *vertices_count = 0;
   *indices_count = 0;
 
-  /* pre-cache lod_ranges squared assuming lod_count <= 8 */
+  /* pre-cache lod_ranges squared assuming lod_count <= CDLOD_MAX_LODS */
   for (i = 0; i < lod_count; ++i)
   {
     lod_ranges_sq[i] = lod_ranges[i] * lod_ranges[i];

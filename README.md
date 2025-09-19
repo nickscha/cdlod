@@ -83,6 +83,15 @@ int main() {
     return 0;
 }
 ```
+### Define max. lod levels
+
+By default maximum 8 lod levels are supported.
+If you want to increase/decrease that amount you can either use the compile flag `-DCDLOD_MAX_LODS=16` or define it before including the header.
+
+```C
+#define CDLOD_MAX_LODS 16
+#include "cdlod.h"
+```
 
 ## Run Example: nostdlib, freestsanding
 
