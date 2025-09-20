@@ -33,6 +33,44 @@ LICENSE
 #define CDLOD_MAX_LODS 8
 #endif
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
+#pragma GCC diagnostic ignored "-Wuninitialized"
+#elif defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4699) /* MSVC-specific aliasing warning */
+#endif
+CDLOD_API CDLOD_INLINE float cdlod_invsqrt(float number)
+{
+  union
+  {
+    float f;
+    long i;
+  } conv;
+
+  float x2, y;
+  const float threehalfs = 1.5F;
+
+  x2 = number * 0.5F;
+  conv.f = number;
+  conv.i = 0x5f3759df - (conv.i >> 1); /* Magic number for approximation */
+  y = conv.f;
+  y = y * (threehalfs - (x2 * y * y)); /* One iteration of Newton's method */
+
+  return (y);
+}
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#elif defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+
+CDLOD_API CDLOD_INLINE float cdlod_sqrtf(float x)
+{
+  return (x * cdlod_invsqrt(x));
+}
+
 typedef float (*cdlod_height_function)(float x, float z);
 
 /* quadtree node */
@@ -251,6 +289,7 @@ CDLOD_API CDLOD_INLINE void cdlod(
     float *vertices, int vertices_capacity, int *vertices_count,
     int *indices, int indices_capacity, int *indices_count,
     float camera_x, float camera_y, float camera_z,
+    float forward_x, float forward_z,
     cdlod_height_function height,
     float patch_size,
     int lod_count,
@@ -258,10 +297,15 @@ CDLOD_API CDLOD_INLINE void cdlod(
     int grid_radius,
     float skirt_depth)
 {
-  int cam_patch_x, cam_patch_z;
   int gx, gz;
+  int grid_center_x, grid_center_z;
   float lod_ranges_sq[CDLOD_MAX_LODS];
   int i;
+
+  float fx = forward_x;
+  float fz = forward_z;
+  float len;
+  float offset_x, offset_z;
 
   cdlod_quadtree_node root;
 
@@ -275,16 +319,35 @@ CDLOD_API CDLOD_INLINE void cdlod(
     lod_ranges_sq[i] = lod_ranges[i] * lod_ranges[i];
   }
 
-  /* camera patch coordinates */
-  cam_patch_x = (int)(camera_x / patch_size);
-  cam_patch_z = (int)(camera_z / patch_size);
+  /* normalize forward vector (XZ only) */
+  len = (float)(fx * fx + fz * fz);
+
+  if (len > 0.0001f)
+  {
+    len = 1.0f / cdlod_sqrtf(len);
+    fx *= len;
+    fz *= len;
+  }
+  else
+  {
+    fx = 0.0f;
+    fz = 1.0f; /* default forward = +Z */
+  }
+
+  /* compute forward shift in patch units */
+  offset_x = fx * (float)(grid_radius - 1);
+  offset_z = fz * (float)(grid_radius - 1);
+
+  /* find grid center in patch coords */
+  grid_center_x = (int)(camera_x / patch_size + offset_x);
+  grid_center_z = (int)(camera_z / patch_size + offset_z);
 
   for (gx = -grid_radius; gx <= grid_radius; ++gx)
   {
     for (gz = -grid_radius; gz <= grid_radius; ++gz)
     {
-      root.x = (float)(cam_patch_x + gx) * patch_size + patch_size * 0.5f;
-      root.z = (float)(cam_patch_z + gz) * patch_size + patch_size * 0.5f;
+      root.x = (float)(grid_center_x + gx) * patch_size + patch_size * 0.5f;
+      root.z = (float)(grid_center_z + gz) * patch_size + patch_size * 0.5f;
       root.size = patch_size;
 
       cdlod_quadtree_traverse(vertices, vertices_capacity, vertices_count,
