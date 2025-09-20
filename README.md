@@ -42,6 +42,9 @@ Download or clone cdlod.h and include it in your project.
 /* (1) Define a height function for a given x and z coordinate */
 float custom_height_function(float x, float z)
 {
+  (void) x;
+  (void) y;
+
   /* Flat Plane (replace with perlin/simplex noise or other height algorithms) */
   return 0.0f;
 }
@@ -53,26 +56,30 @@ int main() {
     float vertices[VERTICES_CAPACITY];
     int indices[INDICES_CAPACITY];
     int vertices_count = 0;
-    int indices_count = 0;
+    int indices_count  = 0;
 
     /* (3) Define when different lod ranges should be applied (distance to camera) */
     /*     This has to be sorted in an ascending order                             */
     /*     First = Highest Level of Detail                                         */
     float lod_ranges[] = {0.0f, 50.0f, 100.0f, 200.0f, 400.0f};
-    float patch_size = 64.0f;
-    int grid_radius = 1;
-    float skirt_depth = 5.0f;
+    float patch_size   = 64.0f;
+    int grid_radius    = 1;
+    float skirt_depth  = 5.0f;
 
     /* (4) Define an eye/camera position from which the CDLOD grid should be generated */
-    float camera_position_x = 0.0f;
+    float camera_position_x =  0.0f;
     float camera_position_y = 10.0f;
-    float camera_position_z = 0.0f;
+    float camera_position_z =  0.0f;
+
+    float camera_front_x    =  0.0f;
+    float camera_front_z    = -1.0f; /* For example -1.0f in right-hand-layout (e.g. OpenGL) is front facing */
 
     /* (5) Generate the CDLOD vertices and indices */
     cdlod(
         vertices, VERTICES_CAPACITY, &vertices_count,            /* Vertices data                                   */
         indices, INDICES_CAPACITY, &indices_count,               /* Indices data                                    */
         camera_position_x, camera_position_y, camera_position_z, /* Camera position                                 */
+        camera_front_x, camera_front_z,                          /* Camera front facing vector                      */
         custom_height_function,                                  /* Y-Heightmap function                            */
         patch_size,                                              /* How large is each patch                         */
         5, lod_ranges,                                           /* Number of lod levels and the ranges             */
