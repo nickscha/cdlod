@@ -100,6 +100,36 @@ If you want to increase/decrease that amount you can either use the compile flag
 #include "cdlod.h"
 ```
 
+## Benchmark Results
+
+The `cdlod_test.c` measures cpu cycle counts and time in milliseconds for the cdlod function.
+
+The following settings were used:
+- 5 LOD ranges
+- 64.0f per patch size
+- 9 grid radius (equals 19x19 patches)
+
+This is captured on a `Intel Core i7-7700HQ CPU @ 2.14 GHz` with a single core.
+
+It averages around **0.03 milliseconds** which makes this algorithm suitable and render buget friendly for software rasterizers.
+
+```txt
+cdlod_test.c:119 [perf]
+cdlod_test.c:119 [perf] +-------------------------------------------------------+-------------------------------------------------------+
+cdlod_test.c:119 [perf] | cylces                                                | time_ms                                               |
+cdlod_test.c:119 [perf] +-------------+-------------+-------------+-------------+-------------+-------------+-------------+-------------+
+cdlod_test.c:119 [perf] |         min |         max |         avg |         sum |         min |         max |         avg |         sum |
+cdlod_test.c:119 [perf] +-------------+-------------+-------------+-------------+-------------+-------------+-------------+-------------+
+cdlod_test.c:119 [perf] |       91712 |      508728 |      106040 |  1060407695 |      0.0326 |      0.1812 |      0.0378 |    378.2178 |  10000 x cdlod
+cdlod_test.c:119 [perf] +-------------+-------------+-------------+-------------+-------------+-------------+-------------+-------------+
+```
+
+The build script used for this can be found in `tests/build.bat`
+
+```sh
+cc -s -O2 -std=c89 -pedantic -Wall -Wextra -Werror -Wvla -Wconversion -Wdouble-promotion -Wsign-conversion -Wmissing-field-initializers -Wuninitialized -Winit-self -Wunused -Wunused-macros -Wunused-local-typedefs -o cdlod_test.exe cdlod_test.c
+```
+
 ## Run Example: nostdlib, freestsanding
 
 In this repo you will find the "examples/cdlod_win32_nostdlib.c" with the corresponding "build.bat" file which

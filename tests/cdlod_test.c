@@ -10,9 +10,11 @@ LICENSE
   See end of file for detailed license information.
 
 */
-#include "../cdlod.h"     /* Continuous Distance-Dependent Level of Detail */
-#include "../deps/test.h" /* Simple Testing framework    */
-#include "../deps/perf.h" /* Simple Performance profiler */
+#include "../cdlod.h"                   /* Continuous Distance-Dependent Level of Detail */
+#include "../deps/test.h"               /* Simple Testing framework                      */
+#define PERF_STATS_ENABLE               /* Collect performance metrics                   */
+#define PERF_DISBALE_INTERMEDIATE_PRINT /* Do not print every perf call directly         */
+#include "../deps/perf.h"               /* Simple Performance profiler                   */
 
 /* (1) Define a height function for a given x and z coordinate */
 static float custom_height_function(float x, float z)
@@ -21,11 +23,12 @@ static float custom_height_function(float x, float z)
   return 0.0f * (x + z);
 }
 
-void cdlod_test_simple(void)
-{
-  /* (2) Define a memory buffer for the gneerated cdlod vertice and indices */
 #define VERTICES_CAPACITY 10000
 #define INDICES_CAPACITY 10000
+
+static void cdlod_test_simple(void)
+{
+  /* (2) Define a memory buffer for the gneerated cdlod vertice and indices */
   float vertices[VERTICES_CAPACITY];
   int indices[INDICES_CAPACITY];
   int vertices_count = 0;
@@ -48,17 +51,16 @@ void cdlod_test_simple(void)
   float camera_forward_z = -1.0f;
 
   /* (5) Generate the CDLOD vertices and indices */
-  PERF_PROFILE_WITH_NAME(
-      { cdlod(
-            vertices, VERTICES_CAPACITY, &vertices_count,            /* Vertices data                                   */
-            indices, INDICES_CAPACITY, &indices_count,               /* Indices data                                    */
-            camera_position_x, camera_position_y, camera_position_z, /* Camera position                                 */
-            camera_forward_x, camera_forward_z,                      /* Camera Forward Vector                           */
-            custom_height_function,                                  /* Y-Heightmap function                            */
-            patch_size,                                              /* How large is each patch                         */
-            5, lod_ranges,                                           /* Number of lod levels and the ranges             */
-            grid_radius,                                             /* How big is the grid (1=3x3, 3=5x5 patches, ...) */
-            skirt_depth); }, "cdlod");
+  cdlod(
+      vertices, VERTICES_CAPACITY, &vertices_count,            /* Vertices data                                   */
+      indices, INDICES_CAPACITY, &indices_count,               /* Indices data                                    */
+      camera_position_x, camera_position_y, camera_position_z, /* Camera position                                 */
+      camera_forward_x, camera_forward_z,                      /* Camera Forward Vector                           */
+      custom_height_function,                                  /* Y-Heightmap function                            */
+      patch_size,                                              /* How large is each patch                         */
+      5, lod_ranges,                                           /* Number of lod levels and the ranges             */
+      grid_radius,                                             /* How big is the grid (1=3x3, 3=5x5 patches, ...) */
+      skirt_depth);
 
   test_print_string("vertices count: ");
   test_print_int(vertices_count);
@@ -75,9 +77,66 @@ void cdlod_test_simple(void)
   assert(indices_count > 0);
 }
 
+static void cdlod_test_performance(void)
+{
+  int i;
+
+  float vertices[VERTICES_CAPACITY];
+  int indices[INDICES_CAPACITY];
+  int vertices_count = 0;
+  int indices_count = 0;
+
+  float lod_ranges[] = {0.0f, 50.0f, 100.0f, 200.0f, 400.0f};
+  float patch_size = 64.0f;
+  int grid_radius = 9; /* 9 = 19x19 patches */
+  float skirt_depth = 10.0f;
+
+  float camera_position_x = 0.0f;
+  float camera_position_y = 10.0f;
+  float camera_position_z = 0.0f;
+
+  float camera_forward_x = 0.0f;
+  float camera_forward_z = -1.0f;
+
+  /* Warmup Processor Phase */
+  for (i = 0; i < 1000; ++i)
+  {
+    cdlod(
+        vertices, VERTICES_CAPACITY, &vertices_count,            /* Vertices data                                   */
+        indices, INDICES_CAPACITY, &indices_count,               /* Indices data                                    */
+        camera_position_x, camera_position_y, camera_position_z, /* Camera position                                 */
+        camera_forward_x, camera_forward_z,                      /* Camera Forward Vector                           */
+        custom_height_function,                                  /* Y-Heightmap function                            */
+        patch_size,                                              /* How large is each patch                         */
+        5, lod_ranges,                                           /* Number of lod levels and the ranges             */
+        grid_radius,                                             /* How big is the grid (1=3x3, 3=5x5 patches, ...) */
+        skirt_depth);
+  }
+
+  /* Profile calls */
+  for (i = 0; i < 10000; ++i)
+  {
+    PERF_PROFILE_WITH_NAME(
+        { cdlod(
+              vertices, VERTICES_CAPACITY, &vertices_count,            /* Vertices data                                   */
+              indices, INDICES_CAPACITY, &indices_count,               /* Indices data                                    */
+              camera_position_x, camera_position_y, camera_position_z, /* Camera position                                 */
+              camera_forward_x, camera_forward_z,                      /* Camera Forward Vector                           */
+              custom_height_function,                                  /* Y-Heightmap function                            */
+              patch_size,                                              /* How large is each patch                         */
+              5, lod_ranges,                                           /* Number of lod levels and the ranges             */
+              grid_radius,                                             /* How big is the grid (1=3x3, 3=5x5 patches, ...) */
+              skirt_depth); }, "cdlod");
+  }
+
+  /* Print aggregated performance metrics */
+  perf_print_stats();
+}
+
 int main(void)
 {
   cdlod_test_simple();
+  cdlod_test_performance();
 
   return 0;
 }
